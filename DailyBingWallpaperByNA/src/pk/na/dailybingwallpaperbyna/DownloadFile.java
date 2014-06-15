@@ -10,19 +10,22 @@ import java.net.URL;
 
 import android.os.AsyncTask;
 import android.os.Environment;
+import android.os.Looper;
 import android.util.Log;
 
 public class DownloadFile {
 	private boolean done = false;
+	private final static String FOLDER_NAME = "/Bing Wallpapers by NA";
+
 	public DownloadFile(String uRLToDownload, String filename) {
 		URLToDownload = uRLToDownload;
 		pathToDownloadedFile = Environment.getExternalStorageDirectory()
-				.getPath() + "/Bing Wallpapers by NA/" + filename;
+				.getPath() + FOLDER_NAME + "/" + filename;
 	}
 
 	private boolean setupDirectory() {
 		File folder = new File(Environment.getExternalStorageDirectory()
-				+ "/Bing Wallpapers by NA");
+				+ FOLDER_NAME);
 		boolean success = true;
 		if (!folder.exists()) {
 			success = folder.mkdir();
@@ -32,10 +35,14 @@ public class DownloadFile {
 
 	public String doDownload() {
 		if (setupDirectory()) {
+			if (new File(pathToDownloadedFile).exists()) {
+				return pathToDownloadedFile;
+			}
 			download = new Download();
 			download.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR,
 					URLToDownload);
-			while (!done);
+			while (!done)
+				;
 			return pathToDownloadedFile;
 
 		} else {
@@ -51,6 +58,7 @@ public class DownloadFile {
 
 		@Override
 		protected String doInBackground(String... sUrl) {
+			Looper.prepare();
 			InputStream input = null;
 			OutputStream output = null;
 			HttpURLConnection connection = null;
@@ -59,19 +67,13 @@ public class DownloadFile {
 				connection = (HttpURLConnection) url.openConnection();
 				connection.connect();
 
-				// expect HTTP 200 OK, so we don't mistakenly save error report
-				// instead of the file
 				if (connection.getResponseCode() != HttpURLConnection.HTTP_OK) {
 					return "Server returned HTTP "
 							+ connection.getResponseCode() + " "
 							+ connection.getResponseMessage();
 				}
+				// int fileLength = connection.getContentLength();
 
-				// this will be useful to display download percentage
-				// might be -1: server did not report the length
-				int fileLength = connection.getContentLength();
-
-				// download the file
 				input = connection.getInputStream();
 				output = new FileOutputStream(pathToDownloadedFile);
 
@@ -85,7 +87,7 @@ public class DownloadFile {
 				}
 				Log.i("Downloading", "Downloading complete. File saved to: "
 						+ pathToDownloadedFile);
-				
+
 			} catch (Exception e) {
 				return e.toString();
 			} finally {
